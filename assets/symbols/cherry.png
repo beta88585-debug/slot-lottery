@@ -1,1 +1,8 @@
-
+slot-lottery/
+ ├─ assets/
+ │    └─ symbols/
+ │          ├─ cherry.png
+ │          ├─ lemon.png
+ │          ├─ grape.png
+ │          └─ star.png
+ └─ index.html
