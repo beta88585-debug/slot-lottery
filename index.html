@@ -1,171 +1,413 @@
-// ====== 1. 基本設定 ======
-const SYMBOLS = [
-  "assets/symbols/star.png",
-  "assets/symbols/cherry.png",
-  "assets/symbols/lemon.png",
-  "assets/symbols/clover.png"
-];
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>LINE 抽獎拉霸 🍒</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at top, #ffecd2, #fcb69f);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      text-align: center;
+      color: #333;
+    }
+    .wrapper {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 24px 16px 40px;
+    }
+    h1 {
+      margin-top: 12px;
+      margin-bottom: 4px;
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+    .subtitle {
+      font-size: 14px;
+      opacity: 0.8;
+      margin-bottom: 16px;
+    }
+    .machine {
+      background: linear-gradient(145deg, #fff7f0, #ffe0d0);
+      border-radius: 20px;
+      box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+      padding: 18px 10px 20px;
+    }
+    .reels {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    canvas {
+      border-radius: 14px;
+      background: #1b1b2f;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.7);
+    }
+    .panel {
+      margin-top: 4px;
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    #spinBtn {
+      margin-top: 14px;
+      padding: 12px 30px;
+      border-radius: 999px;
+      border: none;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(135deg, #ff6b6b, #fcb045);
+      color: #fff;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.25);
+      transition: transform 0.08s ease, box-shadow 0.08s ease, opacity 0.2s;
+    }
+    #spinBtn:active {
+      transform: translateY(2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    #spinBtn[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+    #msg {
+      margin-top: 14px;
+      min-height: 24px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    #effect {
+      position: relative;
+      width: 100%;
+      height: 0;
+      overflow: visible;
+    }
+    .burst {
+      position: absolute;
+      left: 50%;
+      top: -12px;
+      transform: translateX(-50%);
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.9), rgba(255,231,150,0));
+      animation: burst 0.6s ease-out forwards;
+      pointer-events: none;
+    }
+    .effect-flash {
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,0.8);
+      animation: flash 0.18s ease-out forwards;
+      pointer-events: none;
+    }
+    @keyframes burst {
+      from { opacity: 1; transform: translateX(-50%) scale(0.3); }
+      to   { opacity: 0; transform: translateX(-50%) scale(1.2); }
+    }
+    @keyframes flash {
+      from { opacity: 0.9; }
+      to   { opacity: 0; }
+    }
+    .footer {
+      margin-top: 18px;
+      font-size: 11px;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <h1>社群限定水果拉霸 🍒</h1>
+  <div class="subtitle">點一下按鈕，看看今天的歐氣如何！</div>
 
-const SPIN_TIME = [2000, 2600, 3200]; // 每軸停止時間
-let reels = [];
+  <div class="machine">
+    <div class="reels">
+      <canvas id="reel1" width="110" height="180"></canvas>
+      <canvas id="reel2" width="110" height="180"></canvas>
+      <canvas id="reel3" width="110" height="180"></canvas>
+    </div>
+    <div class="panel" id="panelText">登入中…</div>
+    <button id="spinBtn" disabled>載入中</button>
+    <div id="msg"></div>
+    <div id="effect"></div>
+  </div>
 
-// ====== 2. 初始化 LIFF ======
-document.addEventListener("DOMContentLoaded", async () => {
-  await liff.init({ liffId: "YOUR_LIFF_ID" });
+  <div class="footer">
+    此為活動抽獎 Demo，不涉及金錢博弈。
+  </div>
+</div>
 
-  reels = [
-    setupReel("reel1"),
-    setupReel("reel2"),
-    setupReel("reel3")
+<script>
+  // ====== 1. 基本設定：水果符號 / 轉動時間 ======
+  const SYMBOLS = [
+    { emoji: "🍒", key: "cherry",  colorFrom: "#ff6b81", colorTo: "#ff4757" },
+    { emoji: "🍋", key: "lemon",   colorFrom: "#ffe66d", colorTo: "#ffdd59" },
+    { emoji: "🍇", key: "grape",   colorFrom: "#9b5de5", colorTo: "#5f2da0" },
+    { emoji: "⭐", key: "star",    colorFrom: "#ffd32a", colorTo: "#ffa801" }
   ];
 
-  document.getElementById("spinBtn").onclick = () => startSpin();
-});
+  const SPIN_TIME = [2000, 2600, 3200]; // 每軸停止時間
+  const SYMBOL_HEIGHT = 90;
+  let reels = [];
+  let spinning = false;
 
-// ====== 3. 建立盤面 ======
-function setupReel(id) {
-  const canvas = document.getElementById(id);
-  const ctx = canvas.getContext("2d");
+  const LIFF_ID = "2008566845-ylJbXNmB"; // 你的 LIFF ID
 
-  return {
-    canvas,
-    ctx,
-    position: 0,
-    speed: 0,
-    symbols: SYMBOLS.map(src => {
-      const img = new Image();
-      img.src = src;
-      return img;
-    })
-  };
-}
+  // ====== 2. 初始化 LIFF ======
+  document.addEventListener("DOMContentLoaded", async () => {
+    const spinBtn = document.getElementById("spinBtn");
+    const panelText = document.getElementById("panelText");
 
-// ====== 4. 開始轉動 ======
-function startSpin() {
-  playSound("start");
-  playSound("rolling");
+    try {
+      await liff.init({ liffId: LIFF_ID });
 
-  reels.forEach((reel, i) => {
-    reel.speed = 30 + Math.random() * 10;
+      if (!liff.isLoggedIn()) {
+        spinBtn.textContent = "登入 LINE 中…";
+        panelText.textContent = "請先登入 LINE";
+        liff.login();
+        return;
+      }
+
+      const profile = await liff.getProfile();
+      panelText.textContent = `歡迎，${profile.displayName}`;
+    } catch (err) {
+      console.error("LIFF 初始化失敗：", err);
+      panelText.textContent = "非 LINE 環境，改為測試模式";
+    }
+
+    // 建立三個轉輪
+    reels = [
+      setupReel("reel1"),
+      setupReel("reel2"),
+      setupReel("reel3")
+    ];
+
+    drawAllReelsInitial();
+
+    spinBtn.textContent = "開始拉霸";
+    spinBtn.disabled = false;
+    spinBtn.onclick = () => startSpin();
+  });
+
+  // ====== 3. 建立單一轉輪 ======
+  function setupReel(id) {
+    const canvas = document.getElementById(id);
+    const ctx = canvas.getContext("2d");
+
+    return {
+      canvas,
+      ctx,
+      position: 0,
+      speed: 0,
+      symbols: SYMBOLS
+    };
+  }
+
+  function drawAllReelsInitial() {
+    reels.forEach((reel, idx) => {
+      reel.position = 0;
+      drawReel(reel, idx);
+    });
+  }
+
+  // ====== 4. 開始轉動 ======
+  function startSpin() {
+    if (spinning) return;
+    spinning = true;
+    document.getElementById("msg").textContent = "";
+    const btn = document.getElementById("spinBtn");
+    btn.disabled = true;
+    btn.textContent = "轉動中…";
+
+    reels.forEach((reel, i) => {
+      reel.speed = 35 + Math.random() * 12;
+
+      setTimeout(() => {
+        stopReel(i);
+      }, SPIN_TIME[i]);
+    });
+
+    animate();
+  }
+
+  // ====== 5. 停止某軸 ======
+  function stopReel(index) {
+    const reel = reels[index];
+    reel.speed = 0;
+  }
+
+  // ====== 6. 動畫迴圈 ======
+  function animate() {
+    let stillRunning = false;
+
+    reels.forEach((reel, idx) => {
+      if (reel.speed > 0.1) {
+        stillRunning = true;
+      }
+
+      reel.position += reel.speed;
+      if (reel.position > reel.canvas.height) reel.position = 0;
+
+      drawReel(reel, idx);
+    });
+
+    if (stillRunning) {
+      requestAnimationFrame(animate);
+    } else {
+      onSpinFinished();
+    }
+  }
+
+  // ====== 7. 畫出轉輪內容 ======
+  function drawReel(reel, reelIndex) {
+    const { ctx, canvas, symbols, position } = reel;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    let y = -position;
+    const visibleCount = Math.ceil(canvas.height / SYMBOL_HEIGHT) + 1;
+
+    for (let i = 0; i < visibleCount; i++) {
+      const symbol = symbols[(i + reelIndex) % symbols.length];
+      drawSymbol(ctx, 0, y, canvas.width, SYMBOL_HEIGHT, symbol);
+      y += SYMBOL_HEIGHT;
+    }
+  }
+
+  function drawSymbol(ctx, x, y, w, h, symbol) {
+    const radius = 18;
+
+    // 底色漸層（亮面卡通）
+    const grad = ctx.createLinearGradient(x, y, x, y + h);
+    grad.addColorStop(0, symbol.colorFrom);
+    grad.addColorStop(0.5, symbol.colorTo);
+    grad.addColorStop(1, "#d35400");
+
+    ctx.fillStyle = grad;
+    roundRect(ctx, x + 10, y + 8, w - 20, h - 16, radius);
+    ctx.fill();
+
+    // 高光
+    const highlight = ctx.createLinearGradient(x, y, x, y + h);
+    highlight.addColorStop(0, "rgba(255,255,255,0.8)");
+    highlight.addColorStop(0.4, "rgba(255,255,255,0)");
+    ctx.fillStyle = highlight;
+    roundRect(ctx, x + 14, y + 10, w - 28, (h - 16) / 2.2, radius * 0.6);
+    ctx.fill();
+
+    // 水果 emoji
+    ctx.font = "40px system-ui";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(symbol.emoji, x + w / 2, y + h / 2);
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  // ====== 8. 轉完抽結果 ======
+  async function onSpinFinished() {
+    // 隨機抽選結果
+    const result = [
+      randomSymbol(),
+      randomSymbol(),
+      randomSymbol()
+    ];
+
+    showWinEffect();
+
+    const score = calcScore(result);
+    const names = result.map(s => s.key).join(" | ");
+
+    const msgEl = document.getElementById("msg");
+    if (score > 0) {
+      msgEl.textContent = `🎉 恭喜！${names}  ➜ 得分：${score}`;
+    } else {
+      msgEl.textContent = `😅 結果：${names}（未中獎，再試一次！）`;
+    }
+
+    // 可選：如果你之後要接後端 / Bot，可以在這裡呼叫 API
+    // sendResultToLine(result, score);
+
+    const btn = document.getElementById("spinBtn");
+    btn.disabled = false;
+    btn.textContent = "再抽一次";
+    spinning = false;
+  }
+
+  // 抽一個符號
+  function randomSymbol() {
+    return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
+  }
+
+  // ====== 9. 算分（你可以改成自己的規則） ======
+  function calcScore(result) {
+    if (result[0].key === result[1].key && result[1].key === result[2].key) {
+      if (result[0].key === "star")   return 500;
+      if (result[0].key === "cherry") return 200;
+      if (result[0].key === "lemon")  return 100;
+      if (result[0].key === "grape")  return 150;
+    }
+    return 0;
+  }
+
+  // ====== 10. 特效 ======
+  function showWinEffect() {
+    const effect = document.getElementById("effect");
+    effect.innerHTML = "";
+
+    const flash = document.createElement("div");
+    flash.className = "effect-flash";
+    const burst = document.createElement("div");
+    burst.className = "burst";
+
+    effect.appendChild(burst);
+    document.body.appendChild(flash);
 
     setTimeout(() => {
-      stopReel(i);
-    }, SPIN_TIME[i]);
-  });
-
-  animate();
-}
-
-// ====== 5. 停止某軸 ======
-function stopReel(index) {
-  const reel = reels[index];
-  playSound("stop");
-  reel.speed = 0;
-}
-
-// ====== 6. 動畫迴圈 ======
-function animate() {
-  let stillRunning = false;
-
-  reels.forEach(reel => {
-    if (reel.speed > 0) stillRunning = true;
-
-    reel.position += reel.speed;
-    if (reel.position > reel.canvas.height) reel.position = 0;
-
-    drawReel(reel);
-  });
-
-  if (stillRunning) {
-    requestAnimationFrame(animate);
-  } else {
-    onSpinFinished();
+      effect.innerHTML = "";
+      flash.remove();
+    }, 800);
   }
-}
 
-// ====== 7. 畫面更新 ======
-function drawReel(reel) {
-  const { ctx, canvas, symbols, position } = reel;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  let y = -position;
-  for (let i = 0; i < symbols.length; i++) {
-    ctx.drawImage(symbols[i], 0, y, canvas.width, 100);
-    y += 100;
+  // ====== 11.（預留）回傳結果到 LINE Bot / 後端 ======
+  async function sendResultToLine(result, score) {
+    try {
+      const profile = await liff.getProfile();
+      console.log("抽獎結果（之後可送到後端）", {
+        userId: profile.userId,
+        displayName: profile.displayName,
+        result,
+        score
+      });
+      // 將來如果要接 Bot，你可以在這裡：
+      // await fetch("https://你的後端/slot/result", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ userId: profile.userId, displayName: profile.displayName, result, score })
+      // });
+    } catch (e) {
+      console.error("sendResultToLine 發生錯誤：", e);
+    }
   }
-}
+</script>
+</body>
+</html>
 
-// ====== 8. 轉完抽結果 ======
-function onSpinFinished() {
-  playSound("win");
-
-  // 隨機抽選圖示
-  const result = [
-    randomSymbol(),
-    randomSymbol(),
-    randomSymbol()
-  ];
-
-  showWinEffect();
-
-  const score = calcScore(result);
-
-  sendResultToLine(result, score);
-}
-
-// 抽一個符號
-function randomSymbol() {
-  return SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
-}
-
-// ====== 9. 算分 ======
-function calcScore(result) {
-  if (result[0] === result[1] && result[1] === result[2]) {
-    if (result[0].includes("star")) return 500;
-    if (result[0].includes("cherry")) return 200;
-    return 50;
-  }
-  return 0;
-}
-
-// ====== 10. 特效 ======
-function showWinEffect() {
-  const effect = document.getElementById("effect");
-
-  effect.innerHTML = `
-    <div class="effect-flash"></div>
-    <div class="burst"></div>
-  `;
-
-  setTimeout(() => { effect.innerHTML = ""; }, 900);
-}
-
-// ====== 11. 音效 ======
-function playSound(name) {
-  const audio = new Audio(`assets/sounds/${name}.mp3`);
-  audio.play();
-}
-
-// ====== 12. 回傳結果到 LINE 群組 ======
-async function sendResultToLine(result, score) {
-  const profile = await liff.getProfile();
-
-  // 回傳給 Bot
-  await fetch("/slot/result", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      userId: profile.userId,
-      displayName: profile.displayName,
-      result,
-      score,
-      replyToken: liff.getContext().endpoint.urlToken
-    })
-  });
-
-  // 顯示彈窗
-  alert(
-    你的結果：\n\n${result.map(x => x.split("/").pop().split(".")[0]).join(" | ")}\n\n得分：${score}
-  );
-}
