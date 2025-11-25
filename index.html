@@ -7,68 +7,58 @@
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 <style>
-  /* 🔥 修正 LIFF WebView 的 100vh & 偏移問題 */
-body {
-  position: relative;
-  height: 100%;
-  min-height: 100dvh; /* 適配 iPhone Safari/LINE */
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden; /* 避免內容被背景推出去 */
-  padding: 0 !important;
-}
-
-/* 🔥 slot 機台真正置中（不受背景干擾） */
-.center-wrapper {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%); /* 真正置中 */
-  width: 100%;
-  max-width: 380px; /* 固定機台大小（避免縮超小） */
-  padding: 0 16px;
-}
-
-/* 🔥 iPhone 安全區域（瀏海、底部條）避免擠壓內容 */
-@supports(padding: env(safe-area-inset-top)) {
-  body {
-    padding-top: calc(env(safe-area-inset-top) + 0px);
-    padding-bottom: calc(env(safe-area-inset-bottom) + 0px);
-  }
-}
-
-/* ---- RESET ---- */
+/* ---------------------------
+   全域 RESET
+----------------------------*/
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
 }
-body {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+
+/* ---------------------------
+   背景：固定在底層（不再擠壓機台）
+----------------------------*/
+.bg-layer {
+  position: fixed;
+  inset: 0;
   background:
-    radial-gradient(circle at top, #ffefba 0%, #ffb347 12%, transparent 45%),
+    radial-gradient(circle at top, #ffefba 0%, #ffb347 12%, transparent 40%),
     radial-gradient(circle at bottom, #3b0000 0%, #000000 55%);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  overflow: hidden;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  z-index: -1;
+  pointer-events: none;
 }
 
-/* ---- CENTER WRAPPER ---- */
-.center-wrapper {
-  width: 100%;
-  max-width: 390px;
-  padding: 0 14px;
+/* ---------------------------
+   Body：真正置中、不被背景干擾
+----------------------------*/
+body {
+  min-height: 100dvh; /* LINE iPhone 真正高度 */
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
+  background: #1a0000; /* 純底色，避免背景推擠 */
 }
 
-/* ---- OUTER GOLD GLOW ---- */
+/* ---------------------------
+   Wrapper：主要置中的容器
+----------------------------*/
+.center-wrapper {
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%); /* 垂直置中 */
+  width: 100%;
+  max-width: 380px;
+  padding: 0 16px;
+  display: flex;
+  justify-content: center;
+}
+
+/* ---------------------------
+   外層金框光暈
+----------------------------*/
 .frame-shadow {
   padding: 12px;
   border-radius: 26px;
@@ -78,18 +68,22 @@ body {
     0 0 35px rgba(255,215,0,0.35);
 }
 
-/* ---- MACHINE ---- */
+/* ---------------------------
+   機台本體
+----------------------------*/
 .machine {
   width: 100%;
   background: linear-gradient(160deg, #3a0006, #180009);
   border-radius: 22px;
   padding: 16px 12px 20px;
   box-shadow:
-    0 0 0 3px rgba(255,255,255,0.15),
-    inset 0 0 18px rgba(0,0,0,0.9);
+    inset 0 0 18px rgba(0,0,0,0.9),
+    0 0 0 3px rgba(255,255,255,0.15);
   position: relative;
   overflow: hidden;
 }
+
+/* 玻璃亮光 */
 .machine::before {
   content:"";
   position: absolute;
@@ -102,12 +96,13 @@ body {
     transparent 70%,
     rgba(255,255,255,0.15) 100%
   );
-  mix-blend-mode: screen;
   pointer-events: none;
   opacity: 0.45;
 }
 
-/* ---- TEXT ---- */
+/* ---------------------------
+   Title
+----------------------------*/
 .title {
   text-align: center;
   font-weight: 800;
@@ -124,10 +119,12 @@ body {
   font-size: 11px;
   color: #ffdddd;
   opacity: 0.85;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
-/* ---- REEL BOX ---- */
+/* ---------------------------
+   Reel Frame
+----------------------------*/
 .reel-frame {
   background: radial-gradient(circle at top, #fff7d6, #ffd86a 30%, #4c0000 90%);
   padding: 8px;
@@ -136,6 +133,7 @@ body {
     inset 0 0 10px rgba(0,0,0,0.7),
     0 0 14px rgba(255,222,173,0.7);
 }
+
 .reel-inner {
   background: linear-gradient(180deg, #181828, #050510);
   border-radius: 14px;
@@ -145,25 +143,30 @@ body {
     0 0 18px rgba(0,255,255,0.35);
 }
 
-/* ---- REELS ---- */
+/* 三個轉輪 */
 .reels {
   display: flex;
   justify-content: center;
   gap: 10px;
 }
+
 canvas {
-  background: radial-gradient(circle at top, #22243a, #050510);
+  background: radial-gradient(circle at top, #282840, #050510);
   border-radius: 14px;
+  width: 90px;
+  height: 110px;
   box-shadow:
     0 0 0 2px rgba(0,0,0,0.7),
     0 0 18px rgba(0,255,255,0.5);
 }
 
-/* ---- NEON BAR ---- */
+/* ---------------------------
+   Neon Bar
+----------------------------*/
 .neon-bar {
   height: 4px;
   border-radius: 999px;
-  margin: 10px 28px 10px;
+  margin: 12px 28px 12px;
   background: linear-gradient(
     90deg,
     rgba(0,255,255,0) 0%,
@@ -176,7 +179,9 @@ canvas {
     0 0 18px rgba(255,0,255,0.8);
 }
 
-/* ---- BUTTON ---- */
+/* ---------------------------
+   SPIN Button
+----------------------------*/
 #spinBtn {
   width: 140px;
   padding: 12px;
@@ -186,9 +191,7 @@ canvas {
   font-size: 16px;
   font-weight: 800;
   color: #3a0000;
-  margin-top: 6px;
   cursor: pointer;
-  text-transform: uppercase;
   box-shadow:
     0 10px 0 #b05d00,
     0 16px 20px rgba(0,0,0,0.7);
@@ -202,10 +205,9 @@ canvas {
 }
 #spinBtn:disabled {
   opacity: 0.6;
-  cursor: not-allowed;
 }
 
-/* ---- MESSAGE ---- */
+/* Result */
 #msg {
   margin-top: 10px;
   font-size: 13px;
@@ -224,26 +226,35 @@ canvas {
 </head>
 
 <body>
+
+<!-- 背景：獨立層，不會影響機台位置 -->
+<div class="bg-layer"></div>
+
+<!-- 主機台置中 -->
 <div class="center-wrapper">
   <div class="frame-shadow">
     <div class="machine">
+
       <div class="title">LUCKY SLOT</div>
       <div class="subtitle">社群限定｜深紅豪華賭場拉霸</div>
 
       <div class="reel-frame">
         <div class="reel-inner">
           <div class="reels">
-            <canvas id="reel1" width="90" height="110"></canvas>
-            <canvas id="reel2" width="90" height="110"></canvas>
-            <canvas id="reel3" width="90" height="110"></canvas>
+            <canvas id="reel1"></canvas>
+            <canvas id="reel2"></canvas>
+            <canvas id="reel3"></canvas>
           </div>
         </div>
       </div>
 
       <div class="neon-bar"></div>
+
       <button id="spinBtn" disabled>載入中…</button>
+
       <div id="msg"></div>
       <div class="footer">本頁為娛樂示意，不涉及金錢博弈。</div>
+
     </div>
   </div>
 </div>
@@ -262,22 +273,19 @@ const SYMBOL_KEYS=["cherry","lemon","grape","star"];
 const CHANGE_INTERVAL=70;
 const SPIN_TIME=[1000,1350,1700];
 
-let reels=[],images=[],spinning=false;
+let reels=[],images=[];
 
+/* -------------------------------
+   初始化
+--------------------------------*/
 document.addEventListener("DOMContentLoaded",async()=>{
   try{
     await liff.init({liffId:LIFF_ID});
-    if(!liff.isLoggedIn())return liff.login();
-  }catch(e){console.warn("非LINE環境");}
-
-  reels=[
-    setupReel("reel1"),
-    setupReel("reel2"),
-    setupReel("reel3")
-  ];
+    if(!liff.isLoggedIn()) return liff.login();
+  }catch(e){}
 
   preloadImages(SYMBOL_PATHS,()=>{
-    reels.forEach(r=>{r.index=randIndex();drawReel(r);});
+    initReels();
     const btn=document.getElementById("spinBtn");
     btn.disabled=false;
     btn.textContent="SPIN";
@@ -286,42 +294,56 @@ document.addEventListener("DOMContentLoaded",async()=>{
 });
 
 function preloadImages(list,cb){
-  let loaded=0;
+  let cnt=0;
   images=list.map(src=>{
     const img=new Image();
     img.src=src;
-    img.onload=()=>{loaded++;if(loaded===list.length)cb();};
+    img.onload=()=>{cnt++;if(cnt===list.length)cb();};
     return img;
   });
 }
-function setupReel(id){
-  const cvs=document.getElementById(id);
-  const ctx=cvs.getContext("2d");
-  const scale=window.devicePixelRatio||1;
-  const w=cvs.width,h=cvs.height;
-  cvs.width=w*scale;cvs.height=h*scale;ctx.scale(scale,scale);
-  return {canvas:cvs,ctx,width:w,height:h,index:0,spinning:false,lastChange:0};
+
+function initReels(){
+  const canvases=["reel1","reel2","reel3"];
+  canvases.forEach(id=>{
+    const cvs=document.getElementById(id);
+    cvs.width=90;
+    cvs.height=110;
+    const ctx=cvs.getContext("2d");
+    reels.push({
+      ctx,
+      index:randIndex(),
+      spinning:false,
+      lastChange:0
+    });
+  });
+  reels.forEach(drawReel);
 }
+
 function drawReel(r){
-  const{ctx,width,height,index}=r;
-  ctx.clearRect(0,0,width,height);
-  const img=images[index];if(!img)return;
-  const p=10,size=Math.min(width-p*2,height-p*2);
-  const x=(width-size)/2,y=(height-size)/2;
-  ctx.save();
-  ctx.shadowColor="rgba(255,255,255,0.4)";
-  ctx.shadowBlur=10;
-  ctx.drawImage(img,x,y,size,size);
-  ctx.restore();
+  const ctx=r.ctx;
+  ctx.clearRect(0,0,90,110);
+  const img=images[r.index];
+  if(!img)return;
+  ctx.drawImage(img, 10, 10, 70, 70);
 }
+
+/* -------------------------
+   SPIN
+--------------------------*/
+let spinning=false;
+
 function startSpin(){
   if(spinning)return;
   spinning=true;
+
   document.getElementById("msg").textContent="";
   const btn=document.getElementById("spinBtn");
-  btn.disabled=true;btn.textContent="SPINNING…";
+  btn.disabled=true;
+  btn.textContent="SPINNING…";
 
   const start=performance.now();
+
   reels.forEach((r,i)=>{
     r.spinning=true;
     r.lastChange=start;
@@ -340,38 +362,40 @@ function startSpin(){
       }
       drawReel(r);
     });
-    if(active)requestAnimationFrame(loop);
+    if(active) requestAnimationFrame(loop);
     else finishSpin();
   });
 }
 
 function finishSpin(){
   const final=[randIndex(),randIndex(),randIndex()];
-  final.forEach((i,idx)=>{
-    reels[idx].index=i;
-    drawReel(reels[idx]);
-  });
+  reels.forEach((r,i)=>{r.index=final[i];drawReel(r);});
 
   const resultKeys=final.map(i=>SYMBOL_KEYS[i]);
   const score=calcScore(resultKeys);
+
   document.getElementById("msg").textContent=
-    score>0?`🎉 恭喜！${resultKeys.join(" | ")} ➜ 得分：${score}`
-           :`😅 ${resultKeys.join(" | ")}（未中獎）`;
+    score>0
+    ?`🎉 恭喜！${resultKeys.join(" | ")} ➜ 得分：${score}`
+    :`😅 ${resultKeys.join(" | ")}（未中獎）`;
 
   const btn=document.getElementById("spinBtn");
-  btn.disabled=false;btn.textContent="SPIN";
+  btn.disabled=false;
+  btn.textContent="SPIN";
   spinning=false;
 }
+
 function randIndex(){return Math.floor(Math.random()*SYMBOL_PATHS.length);}
 function calcScore(r){
   if(r[0]===r[1]&&r[1]===r[2]){
     if(r[0]==="star")return 500;
     if(r[0]==="cherry")return 200;
-    if(r[0]==="lemon")return120;
-    if(r[0]==="grape")return150;
+    if(r[0]==="lemon")return 120;
+    if(r[0]==="grape")return 150;
   }
-  return0;
+  return 0;
 }
 </script>
+
 </body>
 </html>
