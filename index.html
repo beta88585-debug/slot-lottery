@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>LINE 抽獎拉霸 🍒</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      text-align: center;
+      background: radial-gradient(circle at top, #ffecd2, #fcb69f);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .wrapper {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 24px 12px;
+    }
+    .machine {
+      background: #ffffffdd;
+      border-radius: 20px;
+      box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+      padding: 20px 10px;
+    }
+    .reels {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    canvas {
+      background: #1b1b2f;
+      border-radius: 14px;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.7);
+    }
+    button {
+      padding: 12px 26px;
+      border: none;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #fff;
+      background: linear-gradient(135deg,#ff6b6b,#fcb045);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.25);
+    }
+    button:disabled {
+      opacity: 0.6;
+      box-shadow: none;
+    }
+    #msg {
+      margin-top: 14px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+<div class="wrapper">
+  <h1>LINE 抽獎拉霸 🍒</h1>
+
+  <div class="machine">
+    <div class="reels">
+      <canvas id="reel1" width="110" height="180"></canvas>
+      <canvas id="reel2" width="110" height="180"></canvas>
+      <canvas id="reel3" width="110" height="180"></canvas>
+    </div>
+
+    <button id="spinBtn" disabled>載入中…</button>
+
+    <div id="msg"></div>
+  </div>
+</div>
+
+<script>
+  const LIFF_ID = "2008566845-ylJbXNmB";
+
+  // PNG 水果
+  const SYMBOLS = [
+    "assets/symbols/cherry.png",
+    "assets/symbols/lemon.png",
+    "assets/symbols/grape.png",
+    "assets/symbols/star.png"
+  ];
+
+  const SYMBOL_HEIGHT = 100;
+  const SPIN_TIME = [2000, 2600, 3200];
+
+  let reels = [];
+  let spinning = false;
+
+  // 初始化
+  document.addEventListener("DOMContentLoaded", async () => {
+    try {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) return liff.login();
+    } catch (e) {
+      console.warn("非 LINE 環境，測試模式");
+    }
+
+    // 初始化 3 個轉輪
+    reels = [
+      setupReel("reel1"),
+      setupReel("reel2"),
+      setupReel("reel3")
+    ];
+
+    preloadImages(SYMBOLS, () => {
+      drawAllInitial();
+      const btn = document.getElementById("spinBtn");
+      btn.disabled = false;
+      btn.textContent = "開始拉霸";
+      btn.onclick = startSpin;
+    });
+  });
+
+  function preloadImages(list, callback) {
+    let loaded = 0;
+    list.forEach(src => {
+      const img = new Image();
+      img.src = src;
+      img.onload = () => {
+        loaded++;
+        if (loaded === list.length) callback();
+      };
+    });
+  }
+
+  function setupReel(id) {
+    const canvas = document.getElementById(id);
+    const ctx = canvas.getContext("2d");
+
+    const scale = window.devicePixelRatio;
+    const w = canvas.width;
+    const h = canvas.height;
+
+    canvas.width = w * scale;
+    canvas.height = h * scale;
+    ctx.scale(scale, scale);
+
+    return {
+      canvas,
+      ctx,
+      position: 0,
+      speed: 0,
+      width: w,
+      height: h
+    };
+  }
+
+  function drawReel(reel) {
+    const { ctx, width, height, position } = reel;
+    ctx.clearRect(0, 0, width, height);
+
+    let y = -position;
+    for (let i = 0; i < SYMBOLS.length + 1; i++) {
+      const img = new Image();
+      img.src = SYMBOLS[i % SYMBOLS.length];
+      ctx.drawImage(img, 10, y + 10, width - 20, SYMBOL_HEIGHT - 20);
+      y += SYMBOL_HEIGHT;
+    }
+  }
+
+  function drawAllInitial() {
+    reels.forEach(drawReel);
+  }
+
+  function startSpin() {
+    if (spinning) return;
+    spinning = true;
+
+    const btn = document.getElementById("spinBtn");
+    btn.disabled = true;
+    btn.textContent = "轉動中…";
+    document.getElementById("msg").textContent = "";
+
+    reels.forEach((reel, i) => {
+      reel.speed = 30 + Math.random() * 10;
+      setTimeout(() => stopReel(i), SPIN_TIME[i]);
+    });
+
+    animate();
+  }
+
+  function stopReel(i) {
+    reels[i].speed = 0;
+  }
+
+  function animate() {
+    let active = false;
+
+    reels.forEach(reel => {
+      if (reel.speed > 0.1) active = true;
+
+      reel.position += reel.speed;
+      if (reel.position > SYMBOL_HEIGHT * SYMBOLS.length)
+        reel.position = 0;
+
+      drawReel(reel);
+    });
+
+    if (active) requestAnimationFrame(animate);
+    else finishSpin();
+  }
+
+  function finishSpin() {
+    const result = [
+      randomSymbol(),
+      randomSymbol(),
+      randomSymbol()
+    ];
+
+    const score = calcScore(result);
+
+    document.getElementById("msg").textContent =
+      score > 0
+        ? `🎉 恭喜！${result.join(" | ")} ➜ 得分：${score}`
+        : `😅 ${result.join(" | ")}（未中獎）`;
+
+    const btn = document.getElementById("spinBtn");
+    btn.disabled = false;
+    btn.textContent = "再抽一次";
+
+    spinning = false;
+  }
+
+  function randomSymbol() {
+    const map = ["cherry", "lemon", "grape", "star"];
+    return map[Math.floor(Math.random() * map.length)];
+  }
+
+  function calcScore(r) {
+    if (r[0] === r[1] && r[1] === r[2]) {
+      if (r[0] === "star") return 500;
+      if (r[0] === "cherry") return 200;
+      if (r[0] === "lemon") return 100;
+      return 150;
+    }
+    return 0;
+  }
+</script>
+</body>
+</html>
