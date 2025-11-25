@@ -46,16 +46,14 @@ body {
    Wrapper：主要置中的容器
 ----------------------------*/
 .center-wrapper {
-  position: relative;
-  top: 50%;
-  transform: translateY(-50%); /* 垂直置中 */
+  position: absolute;
+  top: 8vh;       /* 改成離頂端 8% */
+  left: 50%;
+  transform: translateX(-50%);
   width: 100%;
   max-width: 380px;
   padding: 0 16px;
-  display: flex;
-  justify-content: center;
 }
-
 /* ---------------------------
    外層金框光暈
 ----------------------------*/
